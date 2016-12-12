@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>TodoList</title>
+    <style>
+      #lista {
+        margin: 0 auto;
+      }
+    </style>
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+
+    <script src="https://code.getmdl.io/1.2.1/material.min.js"></script>
+    <link rel="stylesheet" href="https://code.getmdl.io/1.2.1/material.indigo-pink.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  </head>
+  <body>
+    <div class="mdl-layout mdl-js-layout">
+      <main class="mdl-layout__content">
+        <table id="lista" class="mdl-data-table mdl-js-data-table mdl-shadow--2dp">
+          <thead>
+            <tr>
+              <th colspan="3">
+                <form action="#">
+                  <div class="mdl-textfield mdl-js-textfield">
+                    <input class="mdl-textfield__input" type="text" id="novoItem" v-model="novo">
+                    <label class="mdl-textfield__label" for="novoItem">Text...</label>
+                  </div>
+                  <button v-on:click="addItem" class="mdl-button mdl-js-button mdl-button--raised">
+                    Adicionar
+                  </button>
+                </form>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in itens">
+              <td>
+                <label class="mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" v-bind:for="item.uuid">
+                  <input type="checkbox" v-bind:id="item.uuid" class="mdl-checkbox__input" v-on:change="toogleCheck(item.uuid, $event)" v-model="item.checked">
+                </label>
+              </td>
+              <td class="mdl-data-table__cell--non-numeric">
+                {{ item.content }}
+              </td>
+              <td>
+                <button v-on:click="removeItem(item.uuid)" class="mdl-button mdl-js-button mdl-button--raised">
+                  Remover
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </main>
+    </div>
+
+    <script type="text/javascript">
+      'use strict';
+
+      try {
+
+        var socket = new WebSocket("ws://127.0.0.1:5001");
+
+        var vue_itens = new Vue({
+            el: '#lista',
+            data: {
+              novo : '',
+              itens: []
+            },
+            methods : {
+              removeItem : function(uuid) {
+                socket.send(JSON.stringify({event: 'remove', uuid: uuid}));
+
+                let index = this.itens.findIndex((item) => {
+                  return (item.uuid == uuid);
+                });
+
+                if (index != -1) {
+                  this.itens.splice(index, 1);
+                }
+              },
+              addItem : function() {
+
+                if (this.novo == '') {
+                  return false;
+                }
+
+                socket.send(JSON.stringify({event: 'add', content: this.novo}));
+                this.novo = '';
+              },
+              toogleCheck : function(uuid, event) {
+                let e = event.target.checked ? 'check' : 'uncheck';
+
+                socket.send(JSON.stringify({event: e, uuid: uuid}));
+
+                let index = this.itens.findIndex((item) => {
+                  return (item.uuid == uuid);
+                });
+              }
+            }
+          });
+
+        socket.onopen = function() {
+          console.log("Conectado");
+        }
+
+        socket.onmessage = function(msg) {
+
+          var req = JSON.parse(msg.data);
+
+          switch (req.event) {
+            case 'populate':
+              vue_itens.itens = req.itens;
+              break;
+
+            case 'add':
+              vue_itens.itens.push(req.item);
+              break;
+
+            case 'remove':
+              var index = vue_itens.itens.findIndex(function(item) {
+                return (item.uuid == req.item.uuid);
+              });
+
+              if (index != -1) {
+                vue_itens.itens.splice(index, 1);
+              }
+              break;
+
+            case 'check':
+              var index = vue_itens.itens.findIndex((item) => {
+                return (item.uuid == req.item.uuid);
+              });
+
+              if (index != -1) {
+                vue_itens.itens[index].checked = true;
+              }
+              break;
+
+            case 'uncheck':
+              var index = vue_itens.itens.findIndex((item) => {
+                return (item.uuid == req.item.uuid);
+              });
+
+              if (index != -1) {
+                vue_itens.itens[index].checked = false;
+              }
+              break;
+          }
+
+        }
+
+        socket.onclose = function() {
+          console.log("Desconectado")
+        }
+
+      } catch(exception){
+        console.log(exception);
+      }
+
+    </script>
+  </body>
+</html>

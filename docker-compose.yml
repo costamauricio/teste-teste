@@ -1,42 +1,26 @@
 version: "2"
 services:
   php:
-    depends_on:
-      - "composer"
     image: php:5.6-alpine
     entrypoint:
-      - php
-      - socket.php
+      - sh
+      - bin/container_php.sh
     volumes:
       - ./:/usr/src/myapp
-    working_dir: /usr/src/myapp/server
+    working_dir: /usr/src/myapp
     ports:
       - 5001:5001
-  composer:
-    image: composer
-    volumes:
-      - ./:/app
-    entrypoint:
-      - composer
-      - install
-  # node:
-  #   volumes:
-  #     - ./:/usr/src/app
-  #   image: node:7
-  #   working_dir: /usr/src/app
-  #   ports:
-  #     - 8081:80
-  npm:
-    image: node:7
+  node:
     volumes:
       - ./:/usr/src/app
+    image: node:7
     working_dir: /usr/src/app
-    entrypoint:
-      - npm
-      - install
-  mongodb:
-    image: tutum/mongodb
-    environment:
-      AUTH: "no"
     ports:
-      - 27017:27017
+      - 8081:80
+    entrypoint:
+      - sh
+      - bin/container_node.sh
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379:6379
